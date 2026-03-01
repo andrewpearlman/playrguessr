@@ -273,6 +273,96 @@ body {
 .reveal-label { font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; letter-spacing: 0.2em; color: #aaa; margin-bottom: 4px; }
 .reveal-name { font-family: 'Bebas Neue', sans-serif; font-size: clamp(1.8rem, 4vw, 2.8rem); letter-spacing: 0.15em; }
 .reveal-sub { font-style: italic; font-size: 0.85rem; color: #ccc; margin-top: 4px; }
+
+/* Start screen */
+#start-screen {
+  position: fixed;
+  inset: 0;
+  background: rgba(26,26,26,0.92);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+}
+.start-box {
+  background: var(--cream);
+  border: 3px solid var(--ink);
+  padding: 40px 48px;
+  max-width: 480px;
+  width: 90%;
+  text-align: center;
+  box-shadow: 6px 6px 0 var(--ink);
+}
+.start-box h2 {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 2rem;
+  letter-spacing: 0.15em;
+  margin-bottom: 8px;
+}
+.start-box p {
+  font-style: italic;
+  color: var(--ink-light);
+  margin-bottom: 28px;
+  font-size: 0.9rem;
+}
+.round-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+.round-btn {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.1rem;
+  letter-spacing: 0.1em;
+  padding: 10px 22px;
+  border: 2px solid var(--ink);
+  background: white;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.round-btn:hover, .round-btn.active-round { background: var(--ink); color: var(--cream); }
+.start-custom {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 24px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+}
+.start-custom input {
+  width: 70px;
+  padding: 8px 10px;
+  border: 2px solid var(--rule);
+  background: white;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.9rem;
+  text-align: center;
+  outline: none;
+}
+.start-custom input:focus { border-color: var(--blue); }
+
+/* Summary banner */
+.summary-banner {
+  background: var(--ink);
+  color: var(--cream);
+  padding: 24px 20px;
+  text-align: center;
+  margin-bottom: 16px;
+  border-left: 6px solid var(--gold);
+  display: none;
+}
+.summary-banner.visible { display: block; }
+.summary-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: clamp(1.4rem, 3vw, 2rem);
+  letter-spacing: 0.15em;
+  margin-bottom: 8px;
+}
+.summary-sub { font-style: italic; color: #ccc; font-size: 0.85rem; margin-bottom: 16px; }
 </style>
 </head>
 <body>
@@ -281,6 +371,26 @@ body {
   <h2>MLB Playr Guessr</h2>
   <p id="loading-msg">Loading player database...</p>
   <div class="loading-bar-wrap"><div class="loading-bar" id="loading-bar"></div></div>
+</div>
+
+<!-- Start screen (shown after loading) -->
+<div id="start-screen" style="display:none">
+  <div class="start-box">
+    <h2>How Many Players?</h2>
+    <p>Choose how many mystery players you'd like to guess, or play indefinitely.</p>
+    <div class="round-options">
+      <button class="round-btn" onclick="selectRounds(5, this)">5</button>
+      <button class="round-btn active-round" onclick="selectRounds(10, this)">10</button>
+      <button class="round-btn" onclick="selectRounds(25, this)">25</button>
+      <button class="round-btn" onclick="selectRounds(null, this)">Unlimited</button>
+    </div>
+    <div class="start-custom">
+      <span>Or enter a number (1–100):</span>
+      <input type="number" id="custom-rounds" min="1" max="100" placeholder="e.g. 20"
+        oninput="selectRounds(null, null); this.closest('.start-box').querySelectorAll('.round-btn').forEach(b=>b.classList.remove('active-round'))">
+    </div>
+    <button class="btn btn-primary" style="width:100%;font-size:1.1rem;padding:12px" onclick="startGame()">PLAY BALL</button>
+  </div>
 </div>
 
 <div class="masthead">
@@ -306,6 +416,13 @@ body {
 </div>
 
 <div class="main">
+  <!-- Summary banner (shown after final round, above the last player's stats) -->
+  <div class="summary-banner" id="summary-banner">
+    <div class="summary-title" id="summary-title"></div>
+    <div class="summary-sub" id="summary-sub"></div>
+    <button class="btn btn-next" onclick="playAgain()">PLAY AGAIN</button>
+  </div>
+
   <div class="reveal-banner" id="reveal-banner">
     <div class="reveal-label">THE MYSTERY PLAYER WAS</div>
     <div class="reveal-name" id="reveal-name"></div>
@@ -340,14 +457,14 @@ body {
       <button class="btn btn-next" id="btn-next" onclick="nextPlayer()" style="display:none">NEXT PLAYER</button>
     </div>
     <div class="hint-confirm" id="hint-confirm">
-      <p>Using a hint will be noted in your score. Continue?</p>
+      <p>Each hint reveals one more letter of the player's name. Continue?</p>
       <div class="btn-row">
         <button class="btn btn-hint" onclick="confirmHint()">YES, SHOW HINT</button>
         <button class="btn btn-primary" onclick="cancelHint()">NO THANKS</button>
       </div>
     </div>
     <div class="hints-panel" id="hints-panel">
-      <h3>Hints Revealed</h3>
+      <h3>Name Hint</h3>
       <div id="hints-list"></div>
     </div>
     <div class="guess-history" id="guess-history"></div>
@@ -410,6 +527,9 @@ function fmtWar(v) {
 let allPlayers = [], shuffledPlayers = [];
 let currentIdx = 0, hintsUsed = 0, gameOver = false;
 let totalCorrect = 0, totalHints = 0, streak = 0;
+let roundLimit = 10;    // null = unlimited
+let roundsPlayed = 0;
+let selectedRounds = 10;
 
 // ── Load ──────────────────────────────────────────────────────────────────────
 async function loadPlayers() {
@@ -433,13 +553,14 @@ async function loadPlayers() {
 
   shuffledPlayers = shuffle([...allPlayers]);
   setLoading('Ready! ' + shuffledPlayers.length + ' players loaded.', 100);
-  await new Promise(r => setTimeout(r, 500));
+  await new Promise(r => setTimeout(r, 400));
   document.getElementById('loading-screen').style.display = 'none';
 
   document.getElementById('game-date').textContent = new Date().toLocaleDateString('en-US',
     {weekday:'short', year:'numeric', month:'long', day:'numeric'}).toUpperCase();
-  document.getElementById('score-total').textContent = shuffledPlayers.length;
-  loadPlayer();
+
+  // Show start screen instead of jumping straight into the game
+  document.getElementById('start-screen').style.display = 'flex';
 }
 
 function setLoading(msg, pct) {
@@ -455,6 +576,51 @@ function shuffle(arr) {
   return arr;
 }
 
+// ── Start screen ──────────────────────────────────────────────────────────────
+function selectRounds(n, btn) {
+  selectedRounds = n;
+  document.querySelectorAll('.round-btn').forEach(b => b.classList.remove('active-round'));
+  if (btn) btn.classList.add('active-round');
+  if (n !== null) document.getElementById('custom-rounds').value = '';
+}
+
+function startGame() {
+  // Read custom input if set
+  const customVal = document.getElementById('custom-rounds').value;
+  if (customVal) {
+    const n = parseInt(customVal);
+    if (isNaN(n) || n < 1 || n > 100) {
+      alert('Please enter a number between 1 and 100.');
+      return;
+    }
+    selectedRounds = n;
+  }
+
+  roundLimit = selectedRounds;
+  roundsPlayed = 0;
+  currentIdx = 0;
+  totalCorrect = 0;
+  totalHints = 0;
+  streak = 0;
+  shuffledPlayers = shuffle([...allPlayers]);
+
+  const displayTotal = roundLimit === null ? shuffledPlayers.length : Math.min(roundLimit, shuffledPlayers.length);
+  document.getElementById('score-total').textContent = roundLimit === null ? shuffledPlayers.length : roundLimit;
+
+  document.getElementById('summary-banner').classList.remove('visible');
+  document.getElementById('score-correct').textContent = 0;
+  document.getElementById('score-hints').textContent = 0;
+  document.getElementById('score-streak').textContent = 0;
+  document.getElementById('start-screen').style.display = 'none';
+
+  loadPlayer();
+}
+
+function playAgain() {
+  document.getElementById('start-screen').style.display = 'flex';
+  document.getElementById('summary-banner').classList.remove('visible');
+}
+
 // ── Load player ───────────────────────────────────────────────────────────────
 function loadPlayer() {
   hintsUsed = 0;
@@ -467,15 +633,17 @@ function loadPlayer() {
   document.getElementById('hint-confirm').classList.remove('visible');
   document.getElementById('autocomplete').style.display = 'none';
   document.getElementById('reveal-banner').classList.remove('visible','correct-reveal');
+  document.getElementById('summary-banner').classList.remove('visible');
   document.getElementById('btn-next').style.display = 'none';
   document.getElementById('btn-submit').disabled = false;
   document.getElementById('btn-hint').disabled = false;
   document.getElementById('btn-giveup').style.display = '';
 
-  const total = shuffledPlayers.length;
-  document.getElementById('score-current').textContent = currentIdx + 1;
-  document.getElementById('player-num').textContent = `PLAYER ${currentIdx + 1} / ${total}`;
-  document.getElementById('progress-bar').style.width = `${((currentIdx + 1) / total) * 100}%`;
+  const displayNum = roundsPlayed + 1;
+  const displayTotal = roundLimit === null ? shuffledPlayers.length : roundLimit;
+  document.getElementById('score-current').textContent = displayNum;
+  document.getElementById('player-num').textContent = `PLAYER ${displayNum} / ${displayTotal}`;
+  document.getElementById('progress-bar').style.width = `${(displayNum / displayTotal) * 100}%`;
   renderTable(shuffledPlayers[currentIdx]);
 }
 
@@ -502,7 +670,6 @@ function renderTable(player) {
     tbody.appendChild(tr);
   });
 
-  const inRangeSeasons = seasons.filter(s => s.Season >= MIN_YEAR && s.Season <= MAX_YEAR);
   tbody.appendChild(buildCareerRow(seasons, seasons));
 }
 
@@ -632,6 +799,7 @@ function giveUp() {
 
 function endRound(won) {
   gameOver = true;
+  roundsPlayed++;
   const player = shuffledPlayers[currentIdx];
 
   document.getElementById('reveal-name').textContent = player.Name;
@@ -653,41 +821,105 @@ function endRound(won) {
   document.getElementById('score-hints').textContent = totalHints;
   document.getElementById('score-streak').textContent = streak;
 
-  if (currentIdx < shuffledPlayers.length - 1)
+  const sessionDone = roundLimit !== null && roundsPlayed >= roundLimit;
+  const deckDone = currentIdx >= shuffledPlayers.length - 1;
+
+  if (sessionDone || deckDone) {
+    // Show summary above the stat table
+    const label = roundLimit !== null ? roundLimit : roundsPlayed;
+    document.getElementById('summary-title').textContent =
+      `You guessed ${totalCorrect} out of ${roundsPlayed} player${roundsPlayed !== 1 ? 's' : ''} correctly!`;
+    document.getElementById('summary-sub').textContent =
+      totalHints > 0 ? `Hints used: ${totalHints}` : 'No hints used — impressive!';
+    document.getElementById('summary-banner').classList.add('visible');
+    // Scroll to top so summary is visible
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  } else {
     document.getElementById('btn-next').style.display = '';
+  }
 }
 
 function nextPlayer() { currentIdx++; loadPlayer(); }
 
 // ── Hints ─────────────────────────────────────────────────────────────────────
-function getHints(player) {
-  const seasons = player.seasons.filter(s => s.Season >= MIN_YEAR && s.Season <= MAX_YEAR);
-  const hints = [];
+const BLANK_FIRST = '_______';   // fixed-width placeholder for first name
+const BLANK_LAST  = '_______';   // fixed-width placeholder for last name
 
-  const posCounts = {};
-  seasons.forEach(s => {
-    if (!s.Pos_str) return;
-    s.Pos_str.split(' ').forEach(p => {
-      const pos = p.replace(/\(\d+\)/,'');
-      const g = parseInt((p.match(/\((\d+)\)/) || [])[1] || 0);
-      posCounts[pos] = (posCounts[pos] || 0) + g;
-    });
-  });
-  const primary = Object.entries(posCounts).sort((a,b) => b[1]-a[1])[0];
-  if (primary) hints.push(`Primary position: ${primary[0]}`);
+function parseName(player) {
+  // Use NameASCII (no diacritics, no suffixes like Jr./III)
+  let name = (player.NameASCII || player.Name || '').trim();
+  // Strip suffixes: Jr., Sr., II, III, IV
+  name = name.replace(/\s+(Jr\.|Sr\.|II|III|IV)$/i, '').trim();
+  // Strip middle initials: period-ending tokens that are NOT the first token (e.g. "A." in "Michael A. Taylor")
+  // This preserves dotted first names like "J.P." or "J.D." while removing middle initials
+  const tokens = name.split(' ');
+  name = tokens.filter((t, i) => i === 0 || !/^[A-Z]\.$/i.test(t)).join(' ').trim();
 
-  const teams = [...new Set(seasons.map(s => s.Team))];
-  hints.push(teams.length === 1
-    ? `Spent entire qualifying career with the ${teams[0]}`
-    : `Played for ${teams.length} teams, including ${teams[0]} and ${teams[teams.length-1]}`);
+  // Split into first and last. Last name = everything after first word.
+  const spaceIdx = name.indexOf(' ');
+  if (spaceIdx === -1) return { first: '', lastRaw: name, lastLetters: name };
+  const first = name.slice(0, spaceIdx);
+  // Last name: strip spaces and hyphens so "De La Cruz" = "DeLaCruz" for letter counting
+  const lastRaw = name.slice(spaceIdx + 1);
+  return { first, lastRaw, lastLetters: lastRaw.replace(/[\s\-]/g, '') };
+}
 
-  const totalHR = seasons.reduce((s, r) => s + (Number(r.HR) || 0), 0);
-  hints.push(`Career home runs (${MIN_YEAR}–${MAX_YEAR}): ${totalHR}`);
+// Build the hint sequence: [last[0], first[0], last[1], last[2], ..., first[1], first[2], ...]
+function buildHintSequence(player) {
+  const { first, lastLetters } = parseName(player);
+  const seq = [];
+  // 1st hint: last[0]
+  // 2nd hint: first[0]
+  // 3rd+ hint: last[1], last[2], ... then first[1], first[2], ...
+  seq.push({ part: 'last',  idx: 0 });
+  if (first) seq.push({ part: 'first', idx: 0 });
+  for (let i = 1; i < lastLetters.length; i++)  seq.push({ part: 'last',  idx: i });
+  for (let i = 1; i < first.length; i++)         seq.push({ part: 'first', idx: i });
+  return seq;
+}
 
-  const best = seasons.reduce((b, s) => Number(s.WAR) > Number(b.WAR) ? s : b, seasons[0]);
-  if (best) hints.push(`Best WAR season: ${fmtWar(best.WAR)} (${best.Season})`);
+// Build the display string given how many hints have been shown
+function buildNameDisplay(player, hintsRevealed) {
+  const { first, lastRaw, lastLetters } = parseName(player);
+  const seq = buildHintSequence(player);
 
-  return hints;
+  // Figure out which letters of first/last are revealed
+  const revealedFirst = new Set();
+  const revealedLast  = new Set();
+  for (let i = 0; i < hintsRevealed && i < seq.length; i++) {
+    const h = seq[i];
+    if (h.part === 'first') revealedFirst.add(h.idx);
+    else                     revealedLast.add(h.idx);
+  }
+
+  // Build last name display: preserve spaces/hyphens, reveal letters by stripped index
+  let lastDisplay = '';
+  let strippedIdx = 0;
+  for (const ch of lastRaw) {
+    if (ch === ' ' || ch === '-') {
+      lastDisplay += ch;
+    } else {
+      lastDisplay += revealedLast.has(strippedIdx) ? ch : '_';
+      strippedIdx++;
+    }
+  }
+
+  // Build first name display
+  let firstDisplay = '';
+  for (let i = 0; i < first.length; i++) {
+    firstDisplay += revealedFirst.has(i) ? first[i] : '_';
+  }
+
+  // Pad to fixed width (7 underscores = BLANK width)
+  const PAD = 7;
+  const lastPadded  = lastDisplay  + '_'.repeat(Math.max(0, PAD - lastRaw.replace(/[\s\-]/g,'').length));
+  const firstPadded = firstDisplay + '_'.repeat(Math.max(0, PAD - first.length));
+
+  if (first) {
+    return `The player's name is: ${firstPadded} ${lastPadded}`;
+  } else {
+    return `The player's name is: ${lastPadded}`;
+  }
 }
 
 function requestHint() {
@@ -697,17 +929,27 @@ function requestHint() {
 function cancelHint() { document.getElementById('hint-confirm').classList.remove('visible'); }
 function confirmHint() {
   document.getElementById('hint-confirm').classList.remove('visible');
-  const hints = getHints(shuffledPlayers[currentIdx]);
-  if (hintsUsed >= hints.length) return;
-  const hint = hints[hintsUsed++];
+  const player = shuffledPlayers[currentIdx];
+  const seq = buildHintSequence(player);
+  if (hintsUsed >= seq.length) return;
+
+  hintsUsed++;
   totalHints++;
   document.getElementById('score-hints').textContent = totalHints;
   document.getElementById('hints-panel').classList.add('visible');
+
+  // Replace the single hint display (always show current accumulated state)
+  const list = document.getElementById('hints-list');
+  list.innerHTML = '';
   const item = document.createElement('div');
   item.className = 'hint-item';
-  item.textContent = `${hintsUsed}. ${hint}`;
-  document.getElementById('hints-list').appendChild(item);
-  if (hintsUsed >= hints.length) document.getElementById('btn-hint').disabled = true;
+  item.style.fontFamily = "'JetBrains Mono', monospace";
+  item.style.fontSize = '0.9rem';
+  item.style.letterSpacing = '0.05em';
+  item.textContent = buildNameDisplay(player, hintsUsed);
+  list.appendChild(item);
+
+  if (hintsUsed >= seq.length) document.getElementById('btn-hint').disabled = true;
 }
 
 // ── Start ─────────────────────────────────────────────────────────────────────

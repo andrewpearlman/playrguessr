@@ -816,7 +816,6 @@ function endRound(won) {
   document.getElementById('hint-confirm').classList.remove('visible');
 
   if (won) { totalCorrect++; streak++; } else { streak = 0; }
-  totalHints += hintsUsed;
   document.getElementById('score-correct').textContent = totalCorrect;
   document.getElementById('score-hints').textContent = totalHints;
   document.getElementById('score-streak').textContent = streak;

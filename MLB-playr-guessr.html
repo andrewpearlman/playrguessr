@@ -702,20 +702,39 @@ function buildCareerRow(seasons, allSeasons) {
 // ── Autocomplete ──────────────────────────────────────────────────────────────
 let acIdx = -1;
 
+// Strip diacritics for accent-insensitive matching
+function stripAccents(s) {
+  return (s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
 document.getElementById('guess-input').addEventListener('input', function() {
-  const val = this.value.trim().toLowerCase();
+  const val = stripAccents(this.value.trim().toLowerCase());
   const dd = document.getElementById('autocomplete');
   acIdx = -1;
   if (val.length < 2) { dd.style.display = 'none'; return; }
 
-  const allNames = allPlayers.map(p => p.DisplayName);
-  const matches = allNames.filter(n => n.toLowerCase().includes(val)).slice(0, 10);
+  // Match against accent-stripped DisplayName, but keep original for display
+  const matches = allPlayers
+    .filter(p => stripAccents(p.DisplayName.toLowerCase()).includes(val))
+    .slice(0, 10)
+    .map(p => p.DisplayName);
   if (!matches.length) { dd.style.display = 'none'; return; }
 
+  // Highlight the matched portion in the accent-stripped version,
+  // then display the original accented name with the matched region wrapped in <mark>
   const re = new RegExp(`(${val.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')})`, 'gi');
-  dd.innerHTML = matches.map(n =>
-    `<div class="autocomplete-item" onclick="pickName('${n.replace(/'/g,"&#39;")}')">${n.replace(re,'<mark>$1</mark>')}</div>`
-  ).join('');
+  dd.innerHTML = matches.map(n => {
+    const stripped = stripAccents(n);
+    // Find match position in stripped version, apply <mark> to same span in original
+    const match = stripped.match(re);
+    let display = n;
+    if (match) {
+      const start = stripped.toLowerCase().indexOf(val);
+      const end = start + val.length;
+      display = n.slice(0, start) + '<mark>' + n.slice(start, end) + '</mark>' + n.slice(end);
+    }
+    return `<div class="autocomplete-item" onclick="pickName('${n.replace(/'/g,"&#39;")}')">${display}</div>`;
+  }).join('');
   dd.style.display = 'block';
 });
 
